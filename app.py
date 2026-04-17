@@ -570,6 +570,37 @@ div[data-testid="stDownloadButton"] button:hover {
 footer {visibility: hidden;}
 #MainMenu {visibility: hidden;}
 header {visibility: hidden;}
+
+/* Mobile */
+@media (max-width: 768px) {
+    .main-header {
+        padding: 1.4rem 1.2rem;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+    .main-header h1 {
+        font-size: 1.6rem;
+    }
+    .main-header p {
+        font-size: 0.85rem;
+    }
+    .main-header div[style*="font-size:3rem"] {
+        display: none;
+    }
+    .metric-card {
+        padding: 1rem 1.1rem;
+    }
+    .metric-card .value {
+        font-size: 1.5rem;
+    }
+    .section-header {
+        font-size: 1rem;
+    }
+    [data-testid="stPlotlyChart"] {
+        padding: 0.2rem;
+    }
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -594,11 +625,11 @@ with st.sidebar:
 # --- Hauptbereich ---
 st.markdown("""
 <div class="main-header">
-    <div>
-        <h1>Auswertung</h1>
+    <div style="flex:1; min-width:0">
+        <h1 style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis">Auswertung</h1>
         <p>Verkaufsanalyse für Ihren Automaten</p>
     </div>
-    <div style="font-size:3rem">📊</div>
+    <div style="font-size:3rem; flex-shrink:0">📊</div>
 </div>
 """, unsafe_allow_html=True)
 
@@ -668,7 +699,7 @@ else:
     # Charts
     st.markdown('<div class="section-header">Zeitliche Analyse</div>', unsafe_allow_html=True)
 
-    st.plotly_chart(plotly_wochentag_heatmap(df), use_container_width=True)
+    st.plotly_chart(plotly_wochentag_heatmap(df), use_container_width=True, config={"responsive": True, "scrollZoom": False})
 
 
     st.markdown('<div class="section-header">Produkte</div>', unsafe_allow_html=True)
