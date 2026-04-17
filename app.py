@@ -28,7 +28,7 @@ def create_pdf(df, monat_label):
         # --- Deckblatt ---
         fig, ax = plt.subplots(figsize=(11.69, 8.27))
         ax.axis("off")
-        ax.text(0.5, 0.65, "Automat Köller", ha="center", va="center",
+        ax.text(0.5, 0.65, "Auswertung", ha="center", va="center",
                 fontsize=36, fontweight="bold", transform=ax.transAxes)
         ax.text(0.5, 0.52, f"Verkaufsauswertung {monat_label}", ha="center", va="center",
                 fontsize=20, color="#555", transform=ax.transAxes)
@@ -212,8 +212,8 @@ def create_pdf(df, monat_label):
 
 
 # --- Streamlit UI ---
-st.set_page_config(page_title="Automaten Auswertung", page_icon="🏪", layout="centered")
-st.title("🏪 Automaten Auswertung")
+st.set_page_config(page_title="Auswertung", page_icon="🏪", layout="centered")
+st.title("🏪 Auswertung")
 st.write("CSV-Datei hochladen und PDF-Report herunterladen.")
 
 uploaded_file = st.file_uploader("Verkaufs-CSV hochladen", type="csv")
