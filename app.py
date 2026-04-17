@@ -45,8 +45,8 @@ def load_data(uploaded_file):
 
 def fig_wochentag_heatmap(df):
     apply_chart_style()
-    fig = plt.figure(figsize=(12, 5))
-    gs = gridspec.GridSpec(1, 2, figure=fig, wspace=0.4)
+    fig = plt.figure(figsize=(8, 10))
+    gs = gridspec.GridSpec(2, 1, figure=fig, hspace=0.5)
 
     ax1 = fig.add_subplot(gs[0])
     wt = df.groupby("Wochentag")["Value"].agg(["count", "sum"]).reindex(WOCHENTAGE).fillna(0)
@@ -81,7 +81,7 @@ def fig_wochentag_heatmap(df):
 
 def fig_top_produkte(df):
     apply_chart_style()
-    fig, axes = plt.subplots(1, 2, figsize=(12, 6))
+    fig, axes = plt.subplots(2, 1, figsize=(8, 10))
 
     prod = df.groupby("Product")["Value"].agg(["count", "sum"]).sort_values("count", ascending=True).tail(15)
     axes[0].barh(prod.index, prod["count"], color=C_BLUE, zorder=3, height=0.6)
@@ -121,7 +121,7 @@ def fig_schwache_produkte(df):
 
 def fig_slots_zahlungsart(df):
     apply_chart_style()
-    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+    fig, axes = plt.subplots(2, 1, figsize=(8, 10))
 
     slot = df.groupby("Column")["Value"].agg(["count", "sum"]).sort_values("count", ascending=False).head(20)
     colors = [C_BLUE if v == slot["count"].max() else "#BFDBFE" for v in slot["count"]]
