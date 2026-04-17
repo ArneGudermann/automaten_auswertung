@@ -39,7 +39,9 @@ def load_data(uploaded_file):
     df["Timestamp"] = pd.to_datetime(df["Timestamp"])
     df["Datum"] = df["Timestamp"].dt.date
     df["Stunde"] = df["Timestamp"].dt.hour
-    df["Wochentag"] = df["Timestamp"].dt.day_name(locale="de_DE")
+    TAGE_DE = {"Monday": "Montag", "Tuesday": "Dienstag", "Wednesday": "Mittwoch",
+               "Thursday": "Donnerstag", "Friday": "Freitag", "Saturday": "Samstag", "Sunday": "Sonntag"}
+    df["Wochentag"] = df["Timestamp"].dt.day_name().map(TAGE_DE)
     df = df[df["Product"].notna() & (df["Transaction type"] == "SALE")]
     return df
 
