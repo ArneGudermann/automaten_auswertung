@@ -3,9 +3,6 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 from matplotlib.backends.backend_pdf import PdfPages
-import plotly.graph_objects as go
-import plotly.express as px
-from plotly.subplots import make_subplots
 import streamlit as st
 
 WOCHENTAGE = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"]
@@ -228,194 +225,6 @@ def fig_mwst(df, monat_label):
     return fig
 
 
-PLOTLY_LAYOUT = dict(
-    font=dict(family="DM Sans, sans-serif", color="#1E293B", size=13),
-    plot_bgcolor="#FFFFFF",
-    paper_bgcolor="#FFFFFF",
-    margin=dict(t=50, b=40, l=20, r=20),
-    hoverlabel=dict(bgcolor="white", font_size=13, font_color="#1E293B"),
-    colorway=[C_BLUE, C_GREEN, "#7C3AED", "#D97706"],
-)
-
-PLOTLY_AXIS = dict(tickfont=dict(color="#475569"), title_font=dict(color="#475569"),
-                   gridcolor="#E2E8F0", linecolor="#E2E8F0")
-
-
-def plotly_wochentag_heatmap(df):
-    wt = df.groupby("Wochentag")["Value"].count().reindex(WOCHENTAGE).fillna(0)
-    colors = [C_BLUE if v == wt.max() else "#BFDBFE" for v in wt.values]
-
-    fig = make_subplots(rows=1, cols=2, subplot_titles=("Verkäufe nach Wochentag", "Heatmap: Uhrzeit × Wochentag"))
-
-    fig.add_trace(go.Bar(
-        x=wt.index, y=wt.values, marker_color=colors,
-        text=wt.values.astype(int), textposition="outside",
-        hovertemplate="%{x}: %{y} Verkäufe<extra></extra>",
-    ), row=1, col=1)
-
-    heat = df.groupby(["Wochentag", "Stunde"])["Value"].count().unstack(fill_value=0).reindex(WOCHENTAGE).fillna(0)
-    fig.add_trace(go.Heatmap(
-        z=heat.values, x=[f"{h}h" for h in heat.columns], y=heat.index,
-        colorscale="Blues", showscale=True,
-        hovertemplate="Tag: %{y}<br>Uhrzeit: %{x}<br>Verkäufe: %{z}<extra></extra>",
-    ), row=1, col=2)
-
-    fig.update_layout(**PLOTLY_LAYOUT, height=380)
-    fig.update_xaxes(**PLOTLY_AXIS, tickangle=-30, row=1, col=1)
-    fig.update_yaxes(**PLOTLY_AXIS)
-    for ann in fig.layout.annotations:
-        ann.font = dict(color="#0F172A", size=14)
-    return fig
-
-
-def plotly_top_produkte(df):
-    prod_count = df.groupby("Product")["Value"].count().sort_values(ascending=True).tail(15)
-    prod_sum = df.groupby("Product")["Value"].sum().sort_values(ascending=True).tail(15)
-
-    fig = make_subplots(rows=1, cols=2, subplot_titles=("Top 15 nach Anzahl", "Top 15 nach Umsatz (€)"))
-
-    fig.add_trace(go.Bar(
-        y=prod_count.index, x=prod_count.values, orientation="h",
-        marker_color=C_BLUE, text=prod_count.values.astype(int), textposition="outside",
-        hovertemplate="%{y}: %{x} Verkäufe<extra></extra>",
-    ), row=1, col=1)
-
-    fig.add_trace(go.Bar(
-        y=prod_sum.index, x=prod_sum.values.round(2), orientation="h",
-        marker_color=C_GREEN,
-        text=[f"{v:.2f} €" for v in prod_sum.values], textposition="outside",
-        hovertemplate="%{y}: %{x:.2f} €<extra></extra>",
-    ), row=1, col=2)
-
-    fig.update_layout(**PLOTLY_LAYOUT, height=500)
-    fig.update_xaxes(**PLOTLY_AXIS)
-    fig.update_yaxes(**PLOTLY_AXIS)
-    for ann in fig.layout.annotations:
-        ann.font = dict(color="#0F172A", size=14)
-    return fig
-
-
-def plotly_schwache_produkte(df):
-    schwach = df.groupby("Product")["Value"].agg(["count", "sum"]).sort_values("count").head(10)
-    fig = go.Figure(go.Bar(
-        y=schwach.index, x=schwach["count"], orientation="h",
-        marker_color="#FCA5A5",
-        text=[f"{int(c)}x · {s:.2f} €" for c, s in zip(schwach["count"], schwach["sum"])],
-        textposition="outside",
-        hovertemplate="%{y}<br>%{x} Verkäufe<extra></extra>",
-    ))
-    fig.update_layout(**PLOTLY_LAYOUT, height=380,
-                      title=dict(text="Schwächste Produkte", font=dict(color="#0F172A", size=15)))
-    fig.update_xaxes(**PLOTLY_AXIS)
-    fig.update_yaxes(**PLOTLY_AXIS)
-    return fig
-
-
-def plotly_slots_zahlungsart(df):
-    slot = (df.dropna(subset=["Column"])
-              .groupby("Column")["Value"].count()
-              .sort_values(ascending=False).head(20))
-    slot.index = slot.index.astype(int).astype(str)
-    zahl_tag = df.groupby(["Datum", "Payment"])["Value"].sum().unstack(fill_value=0)
-
-    fig = make_subplots(rows=1, cols=2, subplot_titles=("Top 20 Slots nach Verkäufen", "Bar vs. Karte pro Tag"))
-
-    colors = [C_BLUE if v == slot.max() else "#BFDBFE" for v in slot.values]
-    fig.add_trace(go.Bar(
-        x=slot.index, y=slot.values, marker_color=colors,
-        hovertemplate="Slot %{x}: %{y} Verkäufe<extra></extra>",
-    ), row=1, col=1)
-
-    if "Cash" in zahl_tag.columns:
-        fig.add_trace(go.Scatter(
-            x=[str(d) for d in zahl_tag.index], y=zahl_tag["Cash"],
-            name="💵 Bar (Cash)", mode="lines+markers",
-            line=dict(color=C_BLUE, width=3),
-            marker=dict(size=7, color=C_BLUE),
-            fill="tozeroy", fillcolor="rgba(37,99,235,0.18)",
-            hovertemplate="<b>Bar</b><br>%{x}: %{y:.2f} €<extra></extra>",
-        ), row=1, col=2)
-    if "Cashless" in zahl_tag.columns:
-        fig.add_trace(go.Scatter(
-            x=[str(d) for d in zahl_tag.index], y=zahl_tag["Cashless"],
-            name="💳 Karte (Cashless)", mode="lines+markers",
-            line=dict(color=C_GREEN, width=3),
-            marker=dict(size=7, color=C_GREEN),
-            fill="tozeroy", fillcolor="rgba(5,150,105,0.18)",
-            hovertemplate="<b>Karte</b><br>%{x}: %{y:.2f} €<extra></extra>",
-        ), row=1, col=2)
-
-    fig.update_layout(**PLOTLY_LAYOUT, height=380,
-                      legend=dict(
-                          orientation="h", yanchor="bottom", y=1.02,
-                          xanchor="right", x=1,
-                          font=dict(size=13, color="#1E293B"),
-                          bgcolor="rgba(255,255,255,0.8)",
-                          bordercolor="#E2E8F0", borderwidth=1,
-                      ))
-    fig.update_xaxes(**PLOTLY_AXIS, tickangle=-45)
-    fig.update_yaxes(**PLOTLY_AXIS)
-    for ann in fig.layout.annotations:
-        ann.font = dict(color="#0F172A", size=14)
-    return fig
-
-
-def plotly_tagesumsatz(df, monat_label):
-    tag = df.groupby("Datum")["Value"].sum()
-    colors = [C_BLUE if v == tag.max() else "#BFDBFE" for v in tag.values]
-    fig = go.Figure(go.Bar(
-        x=[str(d) for d in tag.index], y=tag.values,
-        marker_color=colors,
-        text=[f"{v:.0f} €" for v in tag.values], textposition="outside",
-        hovertemplate="%{x}: %{y:.2f} €<extra></extra>",
-    ))
-    fig.update_layout(**PLOTLY_LAYOUT, height=380)
-    fig.update_xaxes(**PLOTLY_AXIS, tickangle=-45)
-    fig.update_yaxes(**PLOTLY_AXIS)
-    return fig
-
-
-def plotly_mwst(df):
-    df = df.copy()
-    df["Netto"] = df["Value"] / (1 + df["Tax Rate"] / 100)
-    df["MwSt_Betrag"] = df["Value"] - df["Netto"]
-    mwst = df.groupby("Tax Rate").agg(
-        Anzahl=("Value", "count"), Brutto=("Value", "sum"),
-        Netto=("Netto", "sum"), MwSt=("MwSt_Betrag", "sum"),
-    ).reset_index()
-    mwst["Label"] = mwst["Tax Rate"].astype(int).astype(str) + " %"
-
-    fig = make_subplots(rows=1, cols=2, specs=[[{"type": "pie"}, {"type": "table"}]],
-                        subplot_titles=("Brutto-Umsatz nach MwSt-Satz", "Aufschlüsselung"))
-
-    fig.add_trace(go.Pie(
-        labels=mwst["Label"], values=mwst["Brutto"].round(2),
-        marker_colors=[C_BLUE, C_GREEN],
-        hole=0.4,
-        textinfo="label+percent",
-        hovertemplate="%{label}: %{value:.2f} €<extra></extra>",
-    ), row=1, col=1)
-
-    gesamt = ["Gesamt", int(mwst["Anzahl"].sum()),
-              f"{mwst['Brutto'].sum():.2f} €", f"{mwst['Netto'].sum():.2f} €", f"{mwst['MwSt'].sum():.2f} €"]
-    rows = [[row["Label"], int(row["Anzahl"]), f"{row['Brutto']:.2f} €",
-             f"{row['Netto']:.2f} €", f"{row['MwSt']:.2f} €"] for _, row in mwst.iterrows()]
-    rows.append(gesamt)
-
-    fig.add_trace(go.Table(
-        header=dict(values=["MwSt-Satz", "Anzahl", "Brutto", "Netto", "MwSt-Betrag"],
-                    fill_color=C_SLATE, font=dict(color="white", size=13), align="center", height=36),
-        cells=dict(
-            values=[[r[i] for r in rows] for i in range(5)],
-            fill_color=[["#F8FAFC", "#FFFFFF"] * len(rows)],
-            align="center", height=32, font=dict(size=12),
-        ),
-    ), row=1, col=2)
-
-    fig.update_layout(**PLOTLY_LAYOUT, height=380)
-    for ann in fig.layout.annotations:
-        ann.font = dict(color="#0F172A", size=14)
-    return fig
 
 
 def create_pdf(df, monat_label):
@@ -571,8 +380,14 @@ footer {visibility: hidden;}
 #MainMenu {visibility: hidden;}
 header {visibility: hidden;}
 
-/* Mobile */
+/* Mobile Upload im Hauptbereich — auf Desktop verstecken */
+.mobile-upload { display: none; }
+
 @media (max-width: 768px) {
+    /* Sidebar-Upload auf Mobile nicht erreichbar — Haupt-Upload zeigen */
+    .mobile-upload { display: block !important; margin-bottom: 1rem; }
+    [data-testid="stSidebar"] { display: none !important; }
+
     .main-header {
         padding: 1.4rem 1.2rem;
         flex-direction: column;
@@ -604,7 +419,7 @@ header {visibility: hidden;}
 </style>
 """, unsafe_allow_html=True)
 
-# --- Sidebar ---
+# --- Sidebar (Desktop) ---
 with st.sidebar:
     st.markdown("### 📊 Auswertung")
     st.markdown("---")
@@ -633,13 +448,17 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
+# Upload im Hauptbereich (sichtbar auf Mobile)
+st.markdown('<div class="mobile-upload">', unsafe_allow_html=True)
+mobile_file = st.file_uploader("📂 CSV hochladen", type="csv", key="mobile_uploader")
+st.markdown('</div>', unsafe_allow_html=True)
+
+if mobile_file:
+    uploaded_file = mobile_file
+
 if not uploaded_file:
     st.markdown("""
-    <div style='text-align:center; padding: 4rem 2rem; color:#94A3B8'>
-        <div style='font-size:4rem; margin-bottom:1rem'>📂</div>
-        <div style='font-family:Syne,sans-serif; font-size:1.3rem; font-weight:600; color:#475569'>
-            CSV-Datei in der Seitenleiste hochladen
-        </div>
+    <div style='text-align:center; padding: 2rem 1rem; color:#94A3B8'>
         <div style='font-size:0.9rem; margin-top:0.5rem'>
             Die Auswertung startet automatisch nach dem Upload
         </div>
@@ -699,30 +518,30 @@ else:
     # Charts
     st.markdown('<div class="section-header">Zeitliche Analyse</div>', unsafe_allow_html=True)
 
-    st.plotly_chart(plotly_wochentag_heatmap(df), use_container_width=True, config={"responsive": True, "scrollZoom": False})
+    st.pyplot(fig_wochentag_heatmap(df), use_container_width=True)
 
 
     st.markdown('<div class="section-header">Produkte</div>', unsafe_allow_html=True)
 
-    st.plotly_chart(plotly_top_produkte(df), use_container_width=True)
+    st.pyplot(fig_top_produkte(df), use_container_width=True)
 
 
 
-    st.plotly_chart(plotly_schwache_produkte(df), use_container_width=True)
+    st.pyplot(fig_schwache_produkte(df), use_container_width=True)
 
 
     st.markdown('<div class="section-header">Slots & Zahlungsart</div>', unsafe_allow_html=True)
 
-    st.plotly_chart(plotly_slots_zahlungsart(df), use_container_width=True)
+    st.pyplot(fig_slots_zahlungsart(df), use_container_width=True)
 
 
     st.markdown('<div class="section-header">Tagesumsatz</div>', unsafe_allow_html=True)
 
-    st.plotly_chart(plotly_tagesumsatz(df, monat_label), use_container_width=True)
+    st.pyplot(fig_tagesumsatz(df, monat_label), use_container_width=True)
 
 
     st.markdown('<div class="section-header">MwSt-Aufschlüsselung</div>', unsafe_allow_html=True)
 
-    st.plotly_chart(plotly_mwst(df), use_container_width=True)
+    st.pyplot(fig_mwst(df, monat_label), use_container_width=True)
 
 
